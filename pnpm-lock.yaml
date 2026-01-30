@@ -11,9 +11,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.24.0
         version: 0.24.3
-      anylist-napi:
-        specifier: ^1.1.0
-        version: 1.1.0
+      '@anylist-napi/anylist-napi':
+        specifier: ^1.1.1
+        version: 1.1.1
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -41,6 +41,46 @@ packages:
 
   '@anthropic-ai/sdk@0.24.3':
     resolution: {integrity: sha512-916wJXO6T6k8R6BAAcLhLPv/pnLGy7YSEBZXZ1XTFbLcTZE8oTy3oDW9WJf9KKZwMvVcePIfoTSvzXHRcGxkQQ==}
+
+  '@anylist-napi/anylist-napi-darwin-arm64@1.1.1':
+    resolution: {integrity: sha512-Bsl43IxfzIDbaItnmhUdlFHcqW6vQkhbRMZXCsdnotUkN+A9HKKW7nYTsVw/ayp9DEa6QzhPQWYbFpcbQDY2xg==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@anylist-napi/anylist-napi-darwin-x64@1.1.1':
+    resolution: {integrity: sha512-R1IvSEb9eKRjFZEYP2LQ0dQ5BXueDaEHaSDEZO/jpa1Q6/YOA7655c5AJ2/IeV4HYnm6wgBrP/b32hg1Xe7jYQ==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@anylist-napi/anylist-napi-linux-arm64-gnu@1.1.1':
+    resolution: {integrity: sha512-6MVGh0Bhj2/GW7Xdli9zbfqiVBVpB5NyLoVbnSMZcM2GmIR6lvN4BNEAVMv4N4Z1JvhwCPWlEsOQj/sYVO6J3A==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@anylist-napi/anylist-napi-linux-x64-gnu@1.1.1':
+    resolution: {integrity: sha512-K4kCyIzotDabyFoxO120y9/X1GJI1ooETGz9TuGXmKpwCeGGeRcQVsl2CWy173vvKYXiQqtoVWfS0F/njJ7lvg==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@anylist-napi/anylist-napi-linux-x64-musl@1.1.1':
+    resolution: {integrity: sha512-JaKFVqKBy7qYkS6HIQ3RE/2B3TVxrpzFEWPUA1mrAvsZIwGRMTN7/uKvylqzqoWwkfJcHjKqf5jjSuWBL72IKQ==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@anylist-napi/anylist-napi-win32-x64-msvc@1.1.1':
+    resolution: {integrity: sha512-pRhG3fyvGakSl3m+HRyXnHh2MXFWTXhfI2+tJj3IsriamwJLQ1Jq+7iWPlBdrnZlq1MoBkO+F17uN0IflqgYHA==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@anylist-napi/anylist-napi@1.1.1':
+    resolution: {integrity: sha512-2DCdibEpDwAYL1uCN+75uSKMgzS1w5QxeByDjVoLYrEFDMVFKRozOj43a1lrE+GD8xYyF+/ZCSO3Dyk74Wguiw==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
 
   '@esbuild/aix-ppc64@0.27.2':
     resolution: {integrity: sha512-GZMB+a0mOMZs4MpDbj8RJp4cw+w1WV5NYD6xzgvzUJ5Ek2jerwfO2eADyI6ExDSUED+1X8aMbegahsJi+8mgpw==}
@@ -251,46 +291,6 @@ packages:
   agentkeepalive@4.6.0:
     resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
     engines: {node: '>= 8.0.0'}
-
-  anylist-napi-darwin-arm64@1.1.0:
-    resolution: {integrity: sha512-Kwx6ujlEBUyNiAcbsUa1tPhD3SYMPKygeCfDKnvi+hGfvnzNeccbJeTxM2IZXQbOoRT0YNEkS7uS/RwdVl2OOg==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [arm64]
-    os: [darwin]
-
-  anylist-napi-darwin-x64@1.1.0:
-    resolution: {integrity: sha512-wEmbLae1ZbVH+0kuqMOcIpSdD6/fxf4JaSwfPdQZIR59dxXagxUv2pwdr3xOYJ6TsiMInTZ4BYe+bxwtkZ0usg==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [x64]
-    os: [darwin]
-
-  anylist-napi-linux-arm64-gnu@1.1.0:
-    resolution: {integrity: sha512-0aU5b5oSO7NjdxecqkLnWIBqFanKLs28sRqDth1/RXeqYD6uacJ0XmrT7k/5FOL41S3qzCQopQ9GDwNW2+lGvQ==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [arm64]
-    os: [linux]
-
-  anylist-napi-linux-x64-gnu@1.1.0:
-    resolution: {integrity: sha512-EWibnkGHmR78hnDnYhg+kSlWLdXF7oClQd+6hHXiphG43VdR5NBG3av0lou0Dvlf4LMrNSMxaVzskv+6oqI6sw==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [x64]
-    os: [linux]
-
-  anylist-napi-linux-x64-musl@1.1.0:
-    resolution: {integrity: sha512-9TfaJpLOMgryf92qVl2y/+UrhFB1HPKb5II7E0G3OHqCeWEL2ZWq/yXqGeerQ6OXqfDqhOTXCP14z3DmOU+mBg==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [x64]
-    os: [linux]
-
-  anylist-napi-win32-x64-msvc@1.1.0:
-    resolution: {integrity: sha512-uuskuubytdNx3vfxpUnt8f2CPqF8NiodS+p3ukCpuV6QzKnHqK3qXNfofDRi9JUtiFCk1B9tPterryvQY8LZmQ==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
-    cpu: [x64]
-    os: [win32]
-
-  anylist-napi@1.1.0:
-    resolution: {integrity: sha512-+76uMMhoy6Zv0btF27UV/wrE6ECQ8cQGg02r+xt/oxbhkcZlX8PBxG/GH2L2dX267R0N5UGcyqOZU9eIK5J5VQ==}
-    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
 
   array-flatten@1.1.1:
     resolution: {integrity: sha512-PCVAQswWemu6UdxsDFFX/+gVeYqKAod3D3UVm91jHwynguOwAvYPhx8nNlM++NqRcK6CxxpUafjmhIdKiHibqg==}
@@ -673,6 +673,33 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
+  '@anylist-napi/anylist-napi-darwin-arm64@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi-darwin-x64@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi-linux-arm64-gnu@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi-linux-x64-gnu@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi-linux-x64-musl@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi-win32-x64-msvc@1.1.1':
+    optional: true
+
+  '@anylist-napi/anylist-napi@1.1.1':
+    optionalDependencies:
+      '@anylist-napi/anylist-napi-darwin-arm64': 1.1.1
+      '@anylist-napi/anylist-napi-darwin-x64': 1.1.1
+      '@anylist-napi/anylist-napi-linux-arm64-gnu': 1.1.1
+      '@anylist-napi/anylist-napi-linux-x64-gnu': 1.1.1
+      '@anylist-napi/anylist-napi-linux-x64-musl': 1.1.1
+      '@anylist-napi/anylist-napi-win32-x64-msvc': 1.1.1
+
   '@esbuild/aix-ppc64@0.27.2':
     optional: true
 
@@ -822,33 +849,6 @@ snapshots:
   agentkeepalive@4.6.0:
     dependencies:
       humanize-ms: 1.2.1
-
-  anylist-napi-darwin-arm64@1.1.0:
-    optional: true
-
-  anylist-napi-darwin-x64@1.1.0:
-    optional: true
-
-  anylist-napi-linux-arm64-gnu@1.1.0:
-    optional: true
-
-  anylist-napi-linux-x64-gnu@1.1.0:
-    optional: true
-
-  anylist-napi-linux-x64-musl@1.1.0:
-    optional: true
-
-  anylist-napi-win32-x64-msvc@1.1.0:
-    optional: true
-
-  anylist-napi@1.1.0:
-    optionalDependencies:
-      anylist-napi-darwin-arm64: 1.1.0
-      anylist-napi-darwin-x64: 1.1.0
-      anylist-napi-linux-arm64-gnu: 1.1.0
-      anylist-napi-linux-x64-gnu: 1.1.0
-      anylist-napi-linux-x64-musl: 1.1.0
-      anylist-napi-win32-x64-msvc: 1.1.0
 
   array-flatten@1.1.1: {}
 

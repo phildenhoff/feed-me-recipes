@@ -2,7 +2,7 @@
  * AnyList recipe creation via anylist-napi
  */
 
-import { AnyListClient } from 'anylist-napi';
+import { AnyListClient } from '@anylist-napi/anylist-napi';
 import type { Recipe } from './parser.js';
 
 let client: AnyListClient | null = null;
