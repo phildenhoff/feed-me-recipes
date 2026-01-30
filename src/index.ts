@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { fetchInstagramPost } from './apify.js';
+import { fetchInstagramPost, getPostImageUrl, downloadImage } from './apify.js';
 import { parseRecipe } from './parser.js';
 import { createRecipe, type AnyListCredentials } from './anylist.js';
 import { notifySuccess, notifyError, notifyNotRecipe } from './notify.js';
@@ -117,19 +117,35 @@ async function processRecipe(url: string): Promise<void> {
 
     console.log(`[process] Parsed recipe: "${parseResult.recipe.name}" (confidence: ${parseResult.confidence})`);
 
-    // Step 3: Create recipe in AnyList
-    console.log('[process] Step 3: Creating recipe in AnyList...');
-    const created = await createRecipe(
-      parseResult.recipe,
-      url,
-      post.ownerUsername,
-      anylistCredentials
-    );
+    // Step 3: Download cover photo (graceful degradation if fails)
+    console.log('[process] Step 3: Downloading cover photo...');
+    let photo: Buffer | undefined;
+    const imageUrl = getPostImageUrl(post);
+    if (imageUrl) {
+      photo = await downloadImage(imageUrl);
+      if (photo) {
+        console.log(`[process] Downloaded photo: ${photo.length} bytes`);
+      } else {
+        console.log('[process] Photo download failed, continuing without photo');
+      }
+    } else {
+      console.log('[process] No image URL found in post');
+    }
+
+    // Step 4: Create recipe in AnyList
+    console.log('[process] Step 4: Creating recipe in AnyList...');
+    const created = await createRecipe({
+      recipe: parseResult.recipe,
+      sourceUrl: url,
+      sourceUsername: post.ownerUsername,
+      credentials: anylistCredentials,
+      photo,
+    });
 
     console.log(`[process] Recipe created: ${created.id}`);
 
-    // Step 4: Send success notification
-    console.log('[process] Step 4: Sending notification...');
+    // Step 5: Send success notification
+    console.log('[process] Step 5: Sending notification...');
     await notifySuccess(NTFY_TOPIC!, created.name, url);
 
     console.log('[process] Done!');
