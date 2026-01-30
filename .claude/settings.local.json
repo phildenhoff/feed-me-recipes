@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm update:*)",
+      "Bash(pnpm run build)"
+    ]
+  }
+}
