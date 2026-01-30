@@ -12,8 +12,8 @@ importers:
         specifier: ^0.24.0
         version: 0.24.3
       anylist-napi:
-        specifier: ^1.0.3
-        version: 1.0.3
+        specifier: ^1.1.0
+        version: 1.1.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -252,44 +252,44 @@ packages:
     resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
     engines: {node: '>= 8.0.0'}
 
-  anylist-napi-darwin-arm64@1.0.3:
-    resolution: {integrity: sha512-7TjwPEy4NbzNKK2PJ4pXBGy7TN1wM4ceh/a+ms2zeemGQjkgfeRXi0qXsBioDFAOWzkBIG+jNSEOsnByGRKbUA==}
+  anylist-napi-darwin-arm64@1.1.0:
+    resolution: {integrity: sha512-Kwx6ujlEBUyNiAcbsUa1tPhD3SYMPKygeCfDKnvi+hGfvnzNeccbJeTxM2IZXQbOoRT0YNEkS7uS/RwdVl2OOg==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [arm64]
     os: [darwin]
 
-  anylist-napi-darwin-x64@1.0.3:
-    resolution: {integrity: sha512-gcixxUEqdnamffj94gK5vfaZdLX8LcxzYOdum0kzjDY88yBu1TJFIiRuDViDz9rd0/2mxLl4FoHOcY5AH7NVjw==}
+  anylist-napi-darwin-x64@1.1.0:
+    resolution: {integrity: sha512-wEmbLae1ZbVH+0kuqMOcIpSdD6/fxf4JaSwfPdQZIR59dxXagxUv2pwdr3xOYJ6TsiMInTZ4BYe+bxwtkZ0usg==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [x64]
     os: [darwin]
 
-  anylist-napi-linux-arm64-gnu@1.0.3:
-    resolution: {integrity: sha512-j3lYgVjHuXCYsMRip6UiEyb2TuNTS/Ohz6L6BvTY9S/5J88yfB+ZvjrbWzkhoeQ0JOavkRk+i7cptFj2ElK5yg==}
+  anylist-napi-linux-arm64-gnu@1.1.0:
+    resolution: {integrity: sha512-0aU5b5oSO7NjdxecqkLnWIBqFanKLs28sRqDth1/RXeqYD6uacJ0XmrT7k/5FOL41S3qzCQopQ9GDwNW2+lGvQ==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [arm64]
     os: [linux]
 
-  anylist-napi-linux-x64-gnu@1.0.3:
-    resolution: {integrity: sha512-izojLcJuuBwkWxC+hrbIjbmNXAjxPEWZs2Y0s9N0kfSMUnqJ1NfCnq0GcIA32IlCxUD49hXWU4DyGtsiKW4hyA==}
+  anylist-napi-linux-x64-gnu@1.1.0:
+    resolution: {integrity: sha512-EWibnkGHmR78hnDnYhg+kSlWLdXF7oClQd+6hHXiphG43VdR5NBG3av0lou0Dvlf4LMrNSMxaVzskv+6oqI6sw==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [x64]
     os: [linux]
 
-  anylist-napi-linux-x64-musl@1.0.3:
-    resolution: {integrity: sha512-aOHlb/UgfOXVLIaZuF3c0f5W19yFyeakHesyxGPb2HTYfdR6mC1EK51fxbZe2x81QnZW11AJuTx1donnuOWJgQ==}
+  anylist-napi-linux-x64-musl@1.1.0:
+    resolution: {integrity: sha512-9TfaJpLOMgryf92qVl2y/+UrhFB1HPKb5II7E0G3OHqCeWEL2ZWq/yXqGeerQ6OXqfDqhOTXCP14z3DmOU+mBg==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [x64]
     os: [linux]
 
-  anylist-napi-win32-x64-msvc@1.0.3:
-    resolution: {integrity: sha512-7rUSXZYU1Qdce1JTVW+JcgwPCR2GkE7fbQRuLWLxEW1NoLmS9IfVTwHo5Uo/fDuHEkelP7A0dMx/xngf2Glljg==}
+  anylist-napi-win32-x64-msvc@1.1.0:
+    resolution: {integrity: sha512-uuskuubytdNx3vfxpUnt8f2CPqF8NiodS+p3ukCpuV6QzKnHqK3qXNfofDRi9JUtiFCk1B9tPterryvQY8LZmQ==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
     cpu: [x64]
     os: [win32]
 
-  anylist-napi@1.0.3:
-    resolution: {integrity: sha512-adh1ccYI351XlDuMhoil3oN3cB4OlUnq5+n8tIImeTKMdKSMPDCIE842Lw2i5BRBJpl2JFA6rNRHK1Spr16xfQ==}
+  anylist-napi@1.1.0:
+    resolution: {integrity: sha512-+76uMMhoy6Zv0btF27UV/wrE6ECQ8cQGg02r+xt/oxbhkcZlX8PBxG/GH2L2dX267R0N5UGcyqOZU9eIK5J5VQ==}
     engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
 
   array-flatten@1.1.1:
@@ -823,32 +823,32 @@ snapshots:
     dependencies:
       humanize-ms: 1.2.1
 
-  anylist-napi-darwin-arm64@1.0.3:
+  anylist-napi-darwin-arm64@1.1.0:
     optional: true
 
-  anylist-napi-darwin-x64@1.0.3:
+  anylist-napi-darwin-x64@1.1.0:
     optional: true
 
-  anylist-napi-linux-arm64-gnu@1.0.3:
+  anylist-napi-linux-arm64-gnu@1.1.0:
     optional: true
 
-  anylist-napi-linux-x64-gnu@1.0.3:
+  anylist-napi-linux-x64-gnu@1.1.0:
     optional: true
 
-  anylist-napi-linux-x64-musl@1.0.3:
+  anylist-napi-linux-x64-musl@1.1.0:
     optional: true
 
-  anylist-napi-win32-x64-msvc@1.0.3:
+  anylist-napi-win32-x64-msvc@1.1.0:
     optional: true
 
-  anylist-napi@1.0.3:
+  anylist-napi@1.1.0:
     optionalDependencies:
-      anylist-napi-darwin-arm64: 1.0.3
-      anylist-napi-darwin-x64: 1.0.3
-      anylist-napi-linux-arm64-gnu: 1.0.3
-      anylist-napi-linux-x64-gnu: 1.0.3
-      anylist-napi-linux-x64-musl: 1.0.3
-      anylist-napi-win32-x64-msvc: 1.0.3
+      anylist-napi-darwin-arm64: 1.1.0
+      anylist-napi-darwin-x64: 1.1.0
+      anylist-napi-linux-arm64-gnu: 1.1.0
+      anylist-napi-linux-x64-gnu: 1.1.0
+      anylist-napi-linux-x64-musl: 1.1.0
+      anylist-napi-win32-x64-msvc: 1.1.0
 
   array-flatten@1.1.1: {}
 

@@ -52,8 +52,13 @@ export async function createRecipe({
   }
 
   console.log(`[anylist] Creating recipe: ${recipe.name}`);
+
+  // Upload photo first if provided
+  let photoId: string | undefined;
   if (photo) {
-    console.log(`[anylist] Photo included: ${photo.length} bytes`);
+    console.log(`[anylist] Uploading photo: ${photo.length} bytes`);
+    photoId = await client.uploadPhoto(photo, 'recipe-cover.jpg');
+    console.log(`[anylist] Photo uploaded: ${photoId}`);
   }
 
   const created = await client.createRecipe({
@@ -70,8 +75,7 @@ export async function createRecipe({
     cookTime: recipe.cookTime ?? 0,
     sourceName: `Instagram @${sourceUsername}`,
     sourceUrl: sourceUrl,
-    // TODO: Uncomment when anylist-napi supports photo upload
-    // photo: photo,
+    photoId,
   });
 
   console.log(`[anylist] Recipe created: ${created.id}`);
