@@ -29,12 +29,22 @@ export async function ensureLoggedIn(
   console.log('[anylist] Login successful');
 }
 
-export async function createRecipe(
-  recipe: Recipe,
-  sourceUrl: string,
-  sourceUsername: string,
-  credentials: AnyListCredentials
-): Promise<CreatedRecipe> {
+export interface CreateRecipeParams {
+  recipe: Recipe;
+  sourceUrl: string;
+  sourceUsername: string;
+  credentials: AnyListCredentials;
+  /** Photo buffer to upload as recipe cover image (optional) */
+  photo?: Buffer;
+}
+
+export async function createRecipe({
+  recipe,
+  sourceUrl,
+  sourceUsername,
+  credentials,
+  photo,
+}: CreateRecipeParams): Promise<CreatedRecipe> {
   await ensureLoggedIn(credentials);
 
   if (!client) {
@@ -42,6 +52,9 @@ export async function createRecipe(
   }
 
   console.log(`[anylist] Creating recipe: ${recipe.name}`);
+  if (photo) {
+    console.log(`[anylist] Photo included: ${photo.length} bytes`);
+  }
 
   const created = await client.createRecipe({
     name: recipe.name,
@@ -57,6 +70,8 @@ export async function createRecipe(
     cookTime: recipe.cookTime ?? 0,
     sourceName: `Instagram @${sourceUsername}`,
     sourceUrl: sourceUrl,
+    // TODO: Uncomment when anylist-napi supports photo upload
+    // photo: photo,
   });
 
   console.log(`[anylist] Recipe created: ${created.id}`);
