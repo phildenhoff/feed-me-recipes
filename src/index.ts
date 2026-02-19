@@ -72,10 +72,17 @@ const update_count_for_url = db.prepare(`
 `);
 
 const update_imported_at_for_url = db.prepare(`
-    UPDATE import_attempts 
+    UPDATE import_attempts
   SET imported_at = @now
   WHERE url = @url RETURNING url, attempts_count, imported_at;
   `);
+
+const get_failed_urls = db.prepare(`
+  SELECT url, attempts_count, requested_at
+  FROM import_attempts
+  WHERE imported_at IS NULL AND attempts_count > 0
+  ORDER BY requested_at DESC;
+`);
 
 const anylistCredentials: AnyListCredentials = {
   email: ANYLIST_EMAIL!,
@@ -330,4 +337,97 @@ async function processRecipe(url: string): Promise<void> {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`ntfy topic: ${NTFY_TOPIC}`);
+});
+
+// Admin server (Tailscale-only, port 3001)
+const ADMIN_PORT = Number(process.env.ADMIN_PORT) || 3001;
+const adminApp = express();
+adminApp.use(express.json());
+
+adminApp.get("/", (_req: Request, res: Response) => {
+  const failed = get_failed_urls.all() as {
+    url: string;
+    attempts_count: number;
+    requested_at: string;
+  }[];
+
+  const rows = failed
+    .map(
+      ({ url, attempts_count, requested_at }) => `
+      <tr>
+        <td><a href="${url}" target="_blank">${url}</a></td>
+        <td>${attempts_count}</td>
+        <td>${new Date(requested_at).toLocaleString()}</td>
+        <td>
+          <form method="POST" action="/retry">
+            <input type="hidden" name="url" value="${url}" />
+            <button type="submit">Retry</button>
+          </form>
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>fmr admin</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.5rem 1rem; border-bottom: 1px solid #ddd; }
+    th { background: #f5f5f5; }
+    a { color: inherit; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Failed imports (${failed.length})</h1>
+  ${
+    failed.length === 0
+      ? "<p>No failures.</p>"
+      : `<table>
+    <thead><tr><th>URL</th><th>Attempts</th><th>Requested</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <br />
+  <form method="POST" action="/retry">
+    <input type="hidden" name="all" value="true" />
+    <button type="submit">Retry all (${failed.length})</button>
+  </form>`
+  }
+</body>
+</html>`);
+});
+
+adminApp.post("/retry", express.urlencoded({ extended: false }), (req: Request, res: Response) => {
+  const { url, all } = req.body as { url?: string; all?: string };
+
+  if (all === "true") {
+    const failed = get_failed_urls.all() as { url: string }[];
+    for (const { url } of failed) {
+      processRecipe(url).catch((err) =>
+        console.error(`[admin] Unhandled error retrying ${url}:`, err),
+      );
+    }
+    console.log(`[admin] Retrying all ${failed.length} failed URLs`);
+    res.redirect("/");
+    return;
+  }
+
+  if (!url) {
+    res.status(400).send("Missing url");
+    return;
+  }
+
+  processRecipe(url).catch((err) =>
+    console.error(`[admin] Unhandled error retrying ${url}:`, err),
+  );
+  console.log(`[admin] Retrying ${url}`);
+  res.redirect("/");
+});
+
+adminApp.listen(ADMIN_PORT, () => {
+  console.log(`Admin server running on port ${ADMIN_PORT}`);
 });
