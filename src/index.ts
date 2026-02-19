@@ -304,7 +304,7 @@ async function processRecipe(url: string): Promise<void> {
     const updateImportedAt = db.transaction((url: string, now: Date) => {
       update_imported_at_for_url.run({ url, now });
     });
-    updateImportedAt(url, new Date().toISOString());
+    updateImportedAt(url, new Date());
 
     console.log("[process] Done!");
   } catch (error) {
