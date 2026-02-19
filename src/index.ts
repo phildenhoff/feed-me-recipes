@@ -302,7 +302,7 @@ async function processRecipe(url: string): Promise<void> {
     console.log("[process] Step 5: Sending notification...");
     await notifySuccess(NTFY_TOPIC!, created.name, url);
     const updateImportedAt = db.transaction((url: string, now: Date) => {
-      update_imported_at_for_url.run({ url, now });
+      update_imported_at_for_url.run({ url, now: now.toISOString() });
     });
     updateImportedAt(url, new Date());
 
