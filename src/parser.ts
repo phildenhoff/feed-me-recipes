@@ -103,6 +103,61 @@ Rules:
 - Separate ingredient quantities from names where possible
 - Return ONLY valid JSON, no other text`;
 
+/**
+ * Used when we have BOTH Schema.org JSON-LD (from the linked recipe page) AND the
+ * Instagram caption. The JSON-LD is treated as authoritative for all measurable data;
+ * the caption fills in creator voice — tips, variations, personal notes.
+ *
+ * Why this prompt exists instead of just using JSONLD_SYSTEM_PROMPT:
+ *
+ * The original flow parsed the Instagram caption first, then fell back to the URL only
+ * when the caption looked "thin" (missing steps or quantities). That heuristic was
+ * fragile: Haiku will hallucinate a plausible quantity ("1 tsp") for an ingredient
+ * that the caption never measured, and a single invented quantity defeats any
+ * field-presence check. We therefore have no reliable output-side signal to know
+ * when Haiku was faithful vs. filling gaps.
+ *
+ * The fix is to invert the priority: fetch the linked URL first and prefer its
+ * machine-readable structured data (which carries exact weights and a full method)
+ * over an LLM's interpretation of a social-media caption. We still run Haiku, but
+ * now it is grounded — its job is to merge authoritative structure with the
+ * creator's own words, not to reconstruct measurements from vibes.
+ */
+const JSONLD_WITH_CAPTION_SYSTEM_PROMPT = `You are a recipe extraction assistant. You are given two sources:
+1. Schema.org Recipe JSON-LD (structured data from the recipe's website) — treat this as authoritative for measurements, steps, and timings.
+2. An Instagram caption from the recipe creator — use this for personal notes, tips, variations, and any context not captured in the structured data.
+
+Merge both sources into the following JSON structure:
+{
+  "is_recipe": true,
+  "confidence": 1.0,
+  "recipe": {
+    "name": "Recipe Title",
+    "servings": "4 servings",
+    "prepTime": 10,
+    "cookTime": 20,
+    "ingredients": [
+      {"name": "ingredient", "quantity": "1 cup", "note": "optional note"}
+    ],
+    "steps": [
+      "Step 1...",
+      "Step 2..."
+    ],
+    "notes": "Creator tips or personal notes from the Instagram caption"
+  }
+}
+
+If the data cannot be mapped to a valid recipe, return:
+{"is_recipe": false, "reason": "..."}
+
+Rules:
+- Use JSON-LD quantities and measurements verbatim — do NOT invent or adjust quantities
+- prepTime/cookTime in minutes (parse ISO 8601 durations, e.g. PT1H30M = 90)
+- recipeInstructions may be strings or HowToStep objects — extract the text
+- Separate ingredient quantities from names where possible
+- Capture creator tips, personal notes, or variations from the Instagram caption in the notes field
+- Return ONLY valid JSON, no other text`;
+
 export async function parseRecipe(
   caption: string,
   anthropicApiKey: string
@@ -151,6 +206,59 @@ export async function parseRecipe(
     );
   } else {
     console.log(`[parser] Not a recipe: ${result.data.reason}`);
+  }
+
+  return result.data;
+}
+
+export async function parseRecipeFromJsonLdAndCaption(
+  jsonLd: Record<string, unknown>,
+  caption: string,
+  anthropicApiKey: string
+): Promise<ParseResult> {
+  console.log('[parser] Parsing recipe from JSON-LD + Instagram caption');
+
+  const client = new Anthropic({ apiKey: anthropicApiKey });
+
+  const response = await client.messages.create({
+    model: 'claude-3-5-haiku-latest',
+    max_tokens: 2048,
+    system: JSONLD_WITH_CAPTION_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: `JSON-LD structured data:\n\n${JSON.stringify(jsonLd, null, 2)}\n\n---\n\nInstagram caption:\n\n${caption}`,
+      },
+    ],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') {
+    throw new Error('Unexpected response type from Claude');
+  }
+
+  console.log(`[parser] Got JSON-LD+caption response (${content.text.length} chars)`);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content.text);
+  } catch {
+    throw new Error(`Failed to parse Claude response as JSON: ${content.text}`);
+  }
+
+  const result = ParseResultSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`
+    );
+  }
+
+  if (result.data.is_recipe) {
+    console.log(
+      `[parser] Recipe extracted from JSON-LD+caption: "${result.data.recipe.name}"`
+    );
+  } else {
+    console.log(`[parser] JSON-LD+caption not a recipe: ${result.data.reason}`);
   }
 
   return result.data;
