@@ -38,7 +38,7 @@ export type Ingredient = z.infer<typeof IngredientSchema>;
 export type Recipe = z.infer<typeof RecipeSchema>;
 export type ParseResult = z.infer<typeof ParseResultSchema>;
 
-const SYSTEM_PROMPT = `You are a recipe extraction assistant. Given an Instagram post caption, extract the recipe into structured JSON.
+const CAPTION_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given an Instagram post caption, extract the recipe into structured JSON.
 
 If the caption does not contain a recipe (no ingredients or no instructions), return:
 {"is_recipe": false, "reason": "..."}
@@ -72,6 +72,37 @@ Rules:
 - confidence < 0.7 means the extraction may need human review
 - Return ONLY valid JSON, no other text`;
 
+const JSONLD_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given Schema.org Recipe structured data (JSON-LD), convert it into the following JSON structure.
+
+Return:
+{
+  "is_recipe": true,
+  "confidence": 1.0,
+  "recipe": {
+    "name": "Recipe Title",
+    "servings": "4 servings",
+    "prepTime": 10,
+    "cookTime": 20,
+    "ingredients": [
+      {"name": "ingredient", "quantity": "1 cup", "note": "optional note"}
+    ],
+    "steps": [
+      "Step 1...",
+      "Step 2..."
+    ],
+    "notes": "Any additional notes"
+  }
+}
+
+If the data cannot be mapped to a valid recipe, return:
+{"is_recipe": false, "reason": "..."}
+
+Rules:
+- prepTime/cookTime in minutes (parse ISO 8601 durations, e.g. PT1H30M = 90)
+- recipeInstructions may be strings or HowToStep objects — extract the text
+- Separate ingredient quantities from names where possible
+- Return ONLY valid JSON, no other text`;
+
 export async function parseRecipe(
   caption: string,
   anthropicApiKey: string
@@ -83,7 +114,7 @@ export async function parseRecipe(
   const response = await client.messages.create({
     model: 'claude-3-5-haiku-latest',
     max_tokens: 2048,
-    system: SYSTEM_PROMPT,
+    system: CAPTION_SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
@@ -120,6 +151,58 @@ export async function parseRecipe(
     );
   } else {
     console.log(`[parser] Not a recipe: ${result.data.reason}`);
+  }
+
+  return result.data;
+}
+
+export async function parseRecipeFromJsonLd(
+  jsonLd: Record<string, unknown>,
+  anthropicApiKey: string
+): Promise<ParseResult> {
+  console.log('[parser] Parsing recipe from JSON-LD structured data');
+
+  const client = new Anthropic({ apiKey: anthropicApiKey });
+
+  const response = await client.messages.create({
+    model: 'claude-3-5-haiku-latest',
+    max_tokens: 2048,
+    system: JSONLD_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: `Convert this Schema.org Recipe data:\n\n${JSON.stringify(jsonLd, null, 2)}`,
+      },
+    ],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') {
+    throw new Error('Unexpected response type from Claude');
+  }
+
+  console.log(`[parser] Got JSON-LD response (${content.text.length} chars)`);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content.text);
+  } catch {
+    throw new Error(`Failed to parse Claude response as JSON: ${content.text}`);
+  }
+
+  const result = ParseResultSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`
+    );
+  }
+
+  if (result.data.is_recipe) {
+    console.log(
+      `[parser] Recipe extracted from JSON-LD: "${result.data.recipe.name}"`
+    );
+  } else {
+    console.log(`[parser] JSON-LD not a recipe: ${result.data.reason}`);
   }
 
   return result.data;
