@@ -100,12 +100,15 @@ app.post('/ingest', requireAuth, async (req: Request, res: Response) => {
 function extractUrlFromCaption(caption: string): string | null {
   // Collapse line-broken URLs (e.g. "https://example.com/foo\nbar/")
   const normalized = caption.replace(/\n(?=\S)/g, '');
+  // Match both protocol-prefixed URLs and bare www. URLs (e.g. "www.example.com/path")
   const match = normalized.match(
-    /https?:\/\/(?!(?:www\.)?instagram\.com)[^\s]+/i
+    /(?:https?:\/\/|www\.)(?!(?:www\.)?instagram\.com)[^\s]+/i
   );
   if (!match) return null;
   // Strip trailing punctuation that may be part of surrounding text
-  return match[0].replace(/[.,)>\]]+$/, '');
+  const url = match[0].replace(/[.,)>\]]+$/, '');
+  // Ensure the URL has a protocol
+  return url.startsWith('http') ? url : `https://${url}`;
 }
 
 /**
