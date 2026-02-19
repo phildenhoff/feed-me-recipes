@@ -108,6 +108,32 @@ function extractUrlFromCaption(caption: string): string | null {
   return match[0].replace(/[.,)>\]]+$/, '');
 }
 
+/** Returns true when a caption-extracted recipe has no steps or no quantities — suggesting
+ *  the caption only described ingredients in passing rather than giving a full recipe. */
+function isThinRecipe(recipe: Recipe): boolean {
+  const hasNoSteps = recipe.steps.length === 0;
+  const hasNoQuantities = recipe.ingredients.every((i) => !i.quantity);
+  return hasNoSteps || hasNoQuantities;
+}
+
+/** Best-effort attempt to fetch a full recipe from a URL. Returns null on any failure. */
+async function tryFetchRecipeFromUrl(
+  recipeUrl: string,
+  anthropicApiKey: string
+): Promise<Recipe | null> {
+  try {
+    const html = await fetchHtml(recipeUrl);
+    const jsonLd = extractJsonLd(html);
+    if (!jsonLd) return null;
+
+    const result = await parseRecipeFromJsonLd(jsonLd, anthropicApiKey);
+    return result.is_recipe ? result.recipe : null;
+  } catch (err) {
+    console.warn(`[process] URL recipe fetch failed: ${err instanceof Error ? err.message : err}`);
+    return null;
+  }
+}
+
 async function processRecipe(url: string): Promise<void> {
   console.log(`[process] Starting recipe processing for: ${url}`);
 
@@ -156,6 +182,23 @@ async function processRecipe(url: string): Promise<void> {
     } else {
       recipe = captionResult.recipe;
       console.log(`[process] Parsed recipe from caption: "${recipe.name}" (confidence: ${captionResult.confidence})`);
+
+      // Step 2c: Caption recipe looks thin (ingredients only, no steps or quantities) —
+      // try the URL as a best-effort upgrade, but keep the caption result if it fails.
+      if (isThinRecipe(recipe)) {
+        const recipeUrl = extractUrlFromCaption(post.caption);
+        if (recipeUrl) {
+          console.log(`[process] Caption recipe is thin, attempting URL upgrade: ${recipeUrl}`);
+          const urlRecipe = await tryFetchRecipeFromUrl(recipeUrl, ANTHROPIC_API_KEY!);
+          if (urlRecipe) {
+            recipe = urlRecipe;
+            recipeSourceUrl = recipeUrl;
+            console.log(`[process] Upgraded to URL recipe: "${recipe.name}"`);
+          } else {
+            console.log('[process] URL upgrade failed, using caption recipe');
+          }
+        }
+      }
     }
 
     // Step 3: Download cover photo (graceful degradation if fails)
