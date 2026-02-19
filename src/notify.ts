@@ -66,10 +66,13 @@ export async function notifyError(
   errorMessage: string,
   sourceUrl?: string
 ): Promise<void> {
+  const message = sourceUrl
+    ? `${errorMessage}\n\n${sourceUrl}`
+    : errorMessage;
   await sendNotification({
     topic,
     title: 'Recipe Error',
-    message: errorMessage,
+    message,
     tags: ['x', 'warning'],
     priority: 'high',
     click: sourceUrl,
