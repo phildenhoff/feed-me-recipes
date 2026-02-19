@@ -129,10 +129,18 @@ app.post("/ingest", requireAuth, async (req: Request, res: Response) => {
   const { url } = parsed.data;
   console.log(`[ingest] Received URL: ${url}`);
 
-  const insertUrl = db.transaction((url: string, now: string) => {
-    insert_ingested_url.run({ url, now });
-  });
-  insertUrl(url, new Date().toISOString());
+  try {
+    const insertUrl = db.transaction((url: string, now: string) => {
+      insert_ingested_url.run({ url, now });
+    });
+    insertUrl(url, new Date().toISOString());
+  } catch (err: any) {
+    if (err?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      res.status(200).json({ status: "ok" });
+      return;
+    }
+    throw err;
+  }
 
   // Return 202 immediately, process async
   res.status(202).json({
