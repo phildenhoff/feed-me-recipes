@@ -2,7 +2,8 @@ import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { fetchInstagramPost, getPostImageUrl, downloadImage } from './apify.js';
-import { parseRecipe } from './parser.js';
+import { parseRecipe, parseRecipeFromJsonLd, type Recipe } from './parser.js';
+import { fetchHtml, extractJsonLd } from './url-fetcher.js';
 import { createRecipe, type AnyListCredentials } from './anylist.js';
 import { notifySuccess, notifyError, notifyNotRecipe } from './notify.js';
 
@@ -96,6 +97,17 @@ app.post('/ingest', requireAuth, async (req: Request, res: Response) => {
   });
 });
 
+function extractUrlFromCaption(caption: string): string | null {
+  // Collapse line-broken URLs (e.g. "https://example.com/foo\nbar/")
+  const normalized = caption.replace(/\n(?=\S)/g, '');
+  const match = normalized.match(
+    /https?:\/\/(?!(?:www\.)?instagram\.com)[^\s]+/i
+  );
+  if (!match) return null;
+  // Strip trailing punctuation that may be part of surrounding text
+  return match[0].replace(/[.,)>\]]+$/, '');
+}
+
 async function processRecipe(url: string): Promise<void> {
   console.log(`[process] Starting recipe processing for: ${url}`);
 
@@ -105,17 +117,46 @@ async function processRecipe(url: string): Promise<void> {
     const post = await fetchInstagramPost(url, APIFY_TOKEN!);
     console.log(`[process] Got post from @${post.ownerUsername}: ${post.caption.slice(0, 100)}...`);
 
-    // Step 2: Parse recipe with Claude
-    console.log('[process] Step 2: Parsing recipe with Claude...');
-    const parseResult = await parseRecipe(post.caption, ANTHROPIC_API_KEY!);
+    // Step 2: Parse recipe with Claude Haiku (primary path)
+    console.log('[process] Step 2: Parsing caption with Claude...');
+    const captionResult = await parseRecipe(post.caption, ANTHROPIC_API_KEY!);
 
-    if (!parseResult.is_recipe) {
-      console.log(`[process] Not a recipe: ${parseResult.reason}`);
-      await notifyNotRecipe(NTFY_TOPIC!, parseResult.reason, url);
-      return;
+    let recipe: Recipe;
+    let recipeSourceUrl = url;
+
+    if (!captionResult.is_recipe) {
+      // Step 2b: Caption has no recipe — attempt URL fallback
+      console.log(`[process] Caption is not a recipe: ${captionResult.reason}`);
+      const recipeUrl = extractUrlFromCaption(post.caption);
+
+      if (!recipeUrl) {
+        console.log('[process] No recipe URL found in caption');
+        await notifyNotRecipe(NTFY_TOPIC!, captionResult.reason, url);
+        return;
+      }
+
+      console.log(`[process] Attempting URL fallback: ${recipeUrl}`);
+      const html = await fetchHtml(recipeUrl); // throws on network/HTTP error → notifyError
+
+      const jsonLd = extractJsonLd(html);
+      if (!jsonLd) {
+        throw new Error(`No Schema.org Recipe data found at ${recipeUrl}`);
+      }
+
+      const urlResult = await parseRecipeFromJsonLd(jsonLd, ANTHROPIC_API_KEY!);
+      if (!urlResult.is_recipe) {
+        console.log(`[process] URL recipe not parseable: ${urlResult.reason}`);
+        await notifyNotRecipe(NTFY_TOPIC!, urlResult.reason, url);
+        return;
+      }
+
+      recipe = urlResult.recipe;
+      recipeSourceUrl = recipeUrl;
+      console.log(`[process] Parsed recipe from URL: "${recipe.name}"`);
+    } else {
+      recipe = captionResult.recipe;
+      console.log(`[process] Parsed recipe from caption: "${recipe.name}" (confidence: ${captionResult.confidence})`);
     }
-
-    console.log(`[process] Parsed recipe: "${parseResult.recipe.name}" (confidence: ${parseResult.confidence})`);
 
     // Step 3: Download cover photo (graceful degradation if fails)
     console.log('[process] Step 3: Downloading cover photo...');
@@ -135,8 +176,8 @@ async function processRecipe(url: string): Promise<void> {
     // Step 4: Create recipe in AnyList
     console.log('[process] Step 4: Creating recipe in AnyList...');
     const created = await createRecipe({
-      recipe: parseResult.recipe,
-      sourceUrl: url,
+      recipe,
+      sourceUrl: recipeSourceUrl,
       sourceUsername: post.ownerUsername,
       credentials: anylistCredentials,
       photo,
