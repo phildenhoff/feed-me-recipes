@@ -8,12 +8,12 @@
 		"start": "node dist/index.js"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.24.0",
+		"@anthropic-ai/sdk": "^0.78.0",
 		"@anylist-napi/anylist-napi": "^1.1.1",
 		"better-sqlite3": "^12.6.2",
 		"dotenv": "^17.2.3",
 		"express": "^4.18.2",
-		"zod": "^3.22.0"
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.12",
@@ -26,6 +26,8 @@
 		"node": ">=20.0.0"
 	},
 	"pnpm": {
-		"onlyBuiltDependencies": ["better-sqlite3"]
+		"onlyBuiltDependencies": [
+			"better-sqlite3"
+		]
 	}
 }
