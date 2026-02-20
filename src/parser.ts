@@ -3,8 +3,8 @@
  * Extracts structured recipe data from Instagram captions
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import { z } from 'zod';
+import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 
 const IngredientSchema = z.object({
   name: z.string(),
@@ -22,7 +22,7 @@ const RecipeSchema = z.object({
   notes: z.string().optional(),
 });
 
-const ParseResultSchema = z.discriminatedUnion('is_recipe', [
+const ParseResultSchema = z.discriminatedUnion("is_recipe", [
   z.object({
     is_recipe: z.literal(false),
     reason: z.string(),
@@ -160,27 +160,27 @@ Rules:
 
 export async function parseRecipe(
   caption: string,
-  anthropicApiKey: string
+  anthropicApiKey: string,
 ): Promise<ParseResult> {
   console.log(`[parser] Parsing caption (${caption.length} chars)`);
 
   const client = new Anthropic({ apiKey: anthropicApiKey });
 
   const response = await client.messages.create({
-    model: 'claude-3-5-haiku-latest',
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2048,
     system: CAPTION_SYSTEM_PROMPT,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: `Extract the recipe from this Instagram caption:\n\n${caption}`,
       },
     ],
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude');
+  if (content.type !== "text") {
+    throw new Error("Unexpected response type from Claude");
   }
 
   console.log(`[parser] Got response (${content.text.length} chars)`);
@@ -196,13 +196,13 @@ export async function parseRecipe(
   const result = ParseResultSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(
-      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`
+      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`,
     );
   }
 
   if (result.data.is_recipe) {
     console.log(
-      `[parser] Recipe extracted: "${result.data.recipe.name}" (confidence: ${result.data.confidence})`
+      `[parser] Recipe extracted: "${result.data.recipe.name}" (confidence: ${result.data.confidence})`,
     );
   } else {
     console.log(`[parser] Not a recipe: ${result.data.reason}`);
@@ -214,30 +214,32 @@ export async function parseRecipe(
 export async function parseRecipeFromJsonLdAndCaption(
   jsonLd: Record<string, unknown>,
   caption: string,
-  anthropicApiKey: string
+  anthropicApiKey: string,
 ): Promise<ParseResult> {
-  console.log('[parser] Parsing recipe from JSON-LD + Instagram caption');
+  console.log("[parser] Parsing recipe from JSON-LD + Instagram caption");
 
   const client = new Anthropic({ apiKey: anthropicApiKey });
 
   const response = await client.messages.create({
-    model: 'claude-3-5-haiku-latest',
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2048,
     system: JSONLD_WITH_CAPTION_SYSTEM_PROMPT,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: `JSON-LD structured data:\n\n${JSON.stringify(jsonLd, null, 2)}\n\n---\n\nInstagram caption:\n\n${caption}`,
       },
     ],
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude');
+  if (content.type !== "text") {
+    throw new Error("Unexpected response type from Claude");
   }
 
-  console.log(`[parser] Got JSON-LD+caption response (${content.text.length} chars)`);
+  console.log(
+    `[parser] Got JSON-LD+caption response (${content.text.length} chars)`,
+  );
 
   let parsed: unknown;
   try {
@@ -249,13 +251,13 @@ export async function parseRecipeFromJsonLdAndCaption(
   const result = ParseResultSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(
-      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`
+      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`,
     );
   }
 
   if (result.data.is_recipe) {
     console.log(
-      `[parser] Recipe extracted from JSON-LD+caption: "${result.data.recipe.name}"`
+      `[parser] Recipe extracted from JSON-LD+caption: "${result.data.recipe.name}"`,
     );
   } else {
     console.log(`[parser] JSON-LD+caption not a recipe: ${result.data.reason}`);
@@ -266,27 +268,27 @@ export async function parseRecipeFromJsonLdAndCaption(
 
 export async function parseRecipeFromJsonLd(
   jsonLd: Record<string, unknown>,
-  anthropicApiKey: string
+  anthropicApiKey: string,
 ): Promise<ParseResult> {
-  console.log('[parser] Parsing recipe from JSON-LD structured data');
+  console.log("[parser] Parsing recipe from JSON-LD structured data");
 
   const client = new Anthropic({ apiKey: anthropicApiKey });
 
   const response = await client.messages.create({
-    model: 'claude-3-5-haiku-latest',
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2048,
     system: JSONLD_SYSTEM_PROMPT,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: `Convert this Schema.org Recipe data:\n\n${JSON.stringify(jsonLd, null, 2)}`,
       },
     ],
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude');
+  if (content.type !== "text") {
+    throw new Error("Unexpected response type from Claude");
   }
 
   console.log(`[parser] Got JSON-LD response (${content.text.length} chars)`);
@@ -301,13 +303,13 @@ export async function parseRecipeFromJsonLd(
   const result = ParseResultSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(
-      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`
+      `Invalid recipe structure: ${JSON.stringify(result.error.issues)}`,
     );
   }
 
   if (result.data.is_recipe) {
     console.log(
-      `[parser] Recipe extracted from JSON-LD: "${result.data.recipe.name}"`
+      `[parser] Recipe extracted from JSON-LD: "${result.data.recipe.name}"`,
     );
   } else {
     console.log(`[parser] JSON-LD not a recipe: ${result.data.reason}`);
