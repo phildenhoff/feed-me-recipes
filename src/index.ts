@@ -10,7 +10,7 @@ import {
 import { fetchHtml, extractJsonLd, extractOpenGraphImageUrl } from "./url-fetcher.js";
 import { createRecipe, type AnyListCredentials } from "./anylist.js";
 import { notifySuccess, notifyError, notifyNotRecipe } from "./notify.js";
-import { extractRecipeFromSource, type ExtractionDeps } from "./recipe-extractor.js";
+import { makeExtractor } from "./recipe-extractor.js";
 import Database from "better-sqlite3";
 
 const app = express();
@@ -87,6 +87,19 @@ const anylistCredentials: AnyListCredentials = {
   password: ANYLIST_PASSWORD!,
 };
 
+const extractor = makeExtractor({
+  fetchInstagramPost: (u) => fetchInstagramPost(u, APIFY_TOKEN!),
+  getPostImageUrl,
+  downloadImage,
+  fetchHtml,
+  extractJsonLd,
+  extractOpenGraphImageUrl,
+  parseRecipeFromCaption: (caption) => parseRecipe(caption, ANTHROPIC_API_KEY!),
+  parseRecipeFromJsonLd: (jsonLd) => parseRecipeFromJsonLd(jsonLd, ANTHROPIC_API_KEY!),
+  parseRecipeFromJsonLdAndCaption: (jsonLd, caption) =>
+    parseRecipeFromJsonLdAndCaption(jsonLd, caption, ANTHROPIC_API_KEY!),
+});
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -154,20 +167,7 @@ async function processRecipe(url: string): Promise<void> {
   try {
     update_count_for_url.run({ url });
 
-    const deps: ExtractionDeps = {
-      fetchInstagramPost: (u) => fetchInstagramPost(u, APIFY_TOKEN!),
-      getPostImageUrl,
-      downloadImage,
-      fetchHtml,
-      extractJsonLd,
-      extractOpenGraphImageUrl,
-      parseRecipeFromCaption: (caption) => parseRecipe(caption, ANTHROPIC_API_KEY!),
-      parseRecipeFromJsonLd: (jsonLd) => parseRecipeFromJsonLd(jsonLd, ANTHROPIC_API_KEY!),
-      parseRecipeFromJsonLdAndCaption: (jsonLd, caption) =>
-        parseRecipeFromJsonLdAndCaption(jsonLd, caption, ANTHROPIC_API_KEY!),
-    };
-
-    const result = await extractRecipeFromSource(url, deps);
+    const result = await extractor.fromSource(url);
 
     if (!result.ok) {
       console.log(`[process] Not a recipe: ${result.reason}`);
