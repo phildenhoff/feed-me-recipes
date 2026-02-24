@@ -138,3 +138,17 @@ export async function extractRecipeFromSource(
   }
   return extractRecipeFromUrl(url, deps);
 }
+
+export type Extractor = {
+  fromInstagram: (url: string) => Promise<ExtractionResult>;
+  fromUrl: (url: string) => Promise<ExtractionResult>;
+  fromSource: (url: string) => Promise<ExtractionResult>;
+};
+
+export function makeExtractor(deps: ExtractionDeps): Extractor {
+  return {
+    fromInstagram: (url) => extractRecipeFromInstagram(url, deps),
+    fromUrl: (url) => extractRecipeFromUrl(url, deps),
+    fromSource: (url) => extractRecipeFromSource(url, deps),
+  };
+}
