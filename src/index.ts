@@ -5,9 +5,10 @@ import { fetchInstagramPost, getPostImageUrl, downloadImage } from "./apify.js";
 import {
   parseRecipe,
   parseRecipeFromJsonLdAndCaption,
+  parseRecipeFromJsonLd,
   type Recipe,
 } from "./parser.js";
-import { fetchHtml, extractJsonLd } from "./url-fetcher.js";
+import { fetchHtml, extractJsonLd, extractOgImageUrl } from "./url-fetcher.js";
 import { createRecipe, type AnyListCredentials } from "./anylist.js";
 import { notifySuccess, notifyError, notifyNotRecipe } from "./notify.js";
 import Database from "better-sqlite3";
@@ -108,12 +109,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 // Request validation
 const IngestRequestSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .refine((url) => url.includes("instagram.com"), {
-      message: "URL must be an Instagram URL",
-    }),
+  url: z.string().url(),
 });
 
 // Health check (no auth)
@@ -175,6 +171,10 @@ function extractUrlFromCaption(caption: string): string | null {
   return url.startsWith("http") ? url : `https://${url}`;
 }
 
+function isInstagramUrl(url: string): boolean {
+  return url.includes("instagram.com");
+}
+
 /**
  * Fetches a URL and returns the Schema.org Recipe JSON-LD object, or null on any
  * failure (network error, no JSON-LD, wrong @type, etc.).
@@ -205,100 +205,149 @@ async function processRecipe(url: string): Promise<void> {
     });
     updateAttemptCount(url);
 
-    // Step 1: Fetch Instagram post
-    console.log("[process] Step 1: Fetching Instagram post...");
-    const post = await fetchInstagramPost(url, APIFY_TOKEN!);
-    console.log(
-      `[process] Got post from @${post.ownerUsername}: ${post.caption.slice(0, 100)}...`,
-    );
-
     let recipe: Recipe;
     let recipeSourceUrl = url;
+    let sourceUsername: string | undefined;
+    let photo: Buffer | undefined;
 
-    // Step 2: Extract recipe
-    //
-    // Strategy: always check the caption for a linked recipe URL and prefer its
-    // Schema.org JSON-LD over asking Haiku to parse the caption alone. Reasons:
-    //
-    // 1. Haiku hallucination has no reliable output-side detector. When a caption
-    //    gives only a vague ingredient list ("olive oil, garlic, pasta"), Haiku
-    //    invents plausible quantities rather than admitting it doesn't know. A
-    //    single invented value defeats any field-presence check — the previous
-    //    isThinRecipe() heuristic (flag if every ingredient lacks a quantity) fails
-    //    the moment Haiku writes "1 tsp" for salt.
-    //
-    // 2. JSON-LD is the recipe site's own machine-readable data: exact weights,
-    //    full step-by-step method, precise timings. When it exists it is the
-    //    authoritative source, not an LLM's reconstruction from a caption.
-    //
-    // 3. We still run Haiku, but now grounded by the JSON-LD. Its role is to
-    //    merge authoritative structure with the creator's own words (tips,
-    //    variations, personal notes) rather than to invent structure from scratch.
-    //
-    // Fallback: if there is no URL, the URL is unreachable, or the page has no
-    // Recipe JSON-LD, we fall back to caption-only Haiku parsing — same behaviour
-    // as before, but now it is a last resort rather than the default.
-    console.log("[process] Step 2: Extracting recipe...");
-    const recipeUrl = extractUrlFromCaption(post.caption);
-    const jsonLd = recipeUrl ? await tryFetchJsonLd(recipeUrl) : null;
-
-    if (jsonLd) {
+    if (isInstagramUrl(url)) {
+      // ── Instagram path ──────────────────────────────────────────────────────
+      //
+      // Step 1: Fetch Instagram post
+      console.log("[process] Step 1: Fetching Instagram post...");
+      const post = await fetchInstagramPost(url, APIFY_TOKEN!);
       console.log(
-        `[process] Found JSON-LD at ${recipeUrl}, parsing with caption context...`,
+        `[process] Got post from @${post.ownerUsername}: ${post.caption.slice(0, 100)}...`,
       );
-      const result = await parseRecipeFromJsonLdAndCaption(
-        jsonLd,
-        post.caption,
-        ANTHROPIC_API_KEY!,
-      );
+
+      // Step 2: Extract recipe
+      //
+      // Strategy: always check the caption for a linked recipe URL and prefer its
+      // Schema.org JSON-LD over asking Haiku to parse the caption alone. Reasons:
+      //
+      // 1. Haiku hallucination has no reliable output-side detector. When a caption
+      //    gives only a vague ingredient list ("olive oil, garlic, pasta"), Haiku
+      //    invents plausible quantities rather than admitting it doesn't know. A
+      //    single invented value defeats any field-presence check — the previous
+      //    isThinRecipe() heuristic (flag if every ingredient lacks a quantity) fails
+      //    the moment Haiku writes "1 tsp" for salt.
+      //
+      // 2. JSON-LD is the recipe site's own machine-readable data: exact weights,
+      //    full step-by-step method, precise timings. When it exists it is the
+      //    authoritative source, not an LLM's reconstruction from a caption.
+      //
+      // 3. We still run Haiku, but now grounded by the JSON-LD. Its role is to
+      //    merge authoritative structure with the creator's own words (tips,
+      //    variations, personal notes) rather than to invent structure from scratch.
+      //
+      // Fallback: if there is no URL, the URL is unreachable, or the page has no
+      // Recipe JSON-LD, we fall back to caption-only Haiku parsing — same behaviour
+      // as before, but now it is a last resort rather than the default.
+      console.log("[process] Step 2: Extracting recipe...");
+      const recipeUrl = extractUrlFromCaption(post.caption);
+      const jsonLd = recipeUrl ? await tryFetchJsonLd(recipeUrl) : null;
+
+      if (jsonLd) {
+        console.log(
+          `[process] Found JSON-LD at ${recipeUrl}, parsing with caption context...`,
+        );
+        const result = await parseRecipeFromJsonLdAndCaption(
+          jsonLd,
+          post.caption,
+          ANTHROPIC_API_KEY!,
+        );
+        if (!result.is_recipe) {
+          console.log(`[process] JSON-LD not a recipe: ${result.reason}`);
+          await notifyNotRecipe(NTFY_TOPIC!, result.reason, url);
+          return;
+        }
+        recipe = result.recipe;
+        recipeSourceUrl = recipeUrl!;
+        console.log(
+          `[process] Parsed recipe from JSON-LD + caption: "${recipe.name}"`,
+        );
+      } else {
+        // No JSON-LD available: no URL in caption, URL fetch failed, or the page
+        // has no Recipe schema. Fall back to caption-only parsing.
+        if (recipeUrl) {
+          console.log(
+            `[process] No JSON-LD found at ${recipeUrl}, falling back to caption...`,
+          );
+        }
+        console.log("[process] Parsing caption with Claude...");
+        const captionResult = await parseRecipe(post.caption, ANTHROPIC_API_KEY!);
+        if (!captionResult.is_recipe) {
+          console.log(
+            `[process] Caption is not a recipe: ${captionResult.reason}`,
+          );
+          await notifyNotRecipe(NTFY_TOPIC!, captionResult.reason, url);
+          return;
+        }
+        recipe = captionResult.recipe;
+        console.log(
+          `[process] Parsed recipe from caption: "${recipe.name}" (confidence: ${captionResult.confidence})`,
+        );
+      }
+
+      sourceUsername = post.ownerUsername;
+
+      // Step 3: Download cover photo (graceful degradation if fails)
+      console.log("[process] Step 3: Downloading cover photo...");
+      const imageUrl = getPostImageUrl(post);
+      if (imageUrl) {
+        photo = await downloadImage(imageUrl);
+        if (photo) {
+          console.log(`[process] Downloaded photo: ${photo.length} bytes`);
+        } else {
+          console.log(
+            "[process] Photo download failed, continuing without photo",
+          );
+        }
+      } else {
+        console.log("[process] No image URL found in post");
+      }
+    } else {
+      // ── Direct web URL path ─────────────────────────────────────────────────
+      //
+      // Step 1: Fetch the recipe page
+      console.log("[process] Step 1: Fetching recipe page...");
+      const html = await fetchHtml(url);
+
+      // Step 2: Extract recipe from JSON-LD structured data
+      console.log("[process] Step 2: Extracting recipe from JSON-LD...");
+      const jsonLd = extractJsonLd(html);
+
+      if (!jsonLd) {
+        const reason = "No Recipe JSON-LD found on page";
+        console.log(`[process] ${reason}`);
+        await notifyNotRecipe(NTFY_TOPIC!, reason, url);
+        return;
+      }
+
+      const result = await parseRecipeFromJsonLd(jsonLd, ANTHROPIC_API_KEY!);
       if (!result.is_recipe) {
-        console.log(`[process] JSON-LD not a recipe: ${result.reason}`);
+        console.log(`[process] Not a recipe: ${result.reason}`);
         await notifyNotRecipe(NTFY_TOPIC!, result.reason, url);
         return;
       }
       recipe = result.recipe;
-      recipeSourceUrl = recipeUrl!;
-      console.log(
-        `[process] Parsed recipe from JSON-LD + caption: "${recipe.name}"`,
-      );
-    } else {
-      // No JSON-LD available: no URL in caption, URL fetch failed, or the page
-      // has no Recipe schema. Fall back to caption-only parsing.
-      if (recipeUrl) {
-        console.log(
-          `[process] No JSON-LD found at ${recipeUrl}, falling back to caption...`,
-        );
-      }
-      console.log("[process] Parsing caption with Claude...");
-      const captionResult = await parseRecipe(post.caption, ANTHROPIC_API_KEY!);
-      if (!captionResult.is_recipe) {
-        console.log(
-          `[process] Caption is not a recipe: ${captionResult.reason}`,
-        );
-        await notifyNotRecipe(NTFY_TOPIC!, captionResult.reason, url);
-        return;
-      }
-      recipe = captionResult.recipe;
-      console.log(
-        `[process] Parsed recipe from caption: "${recipe.name}" (confidence: ${captionResult.confidence})`,
-      );
-    }
+      console.log(`[process] Parsed recipe: "${recipe.name}"`);
 
-    // Step 3: Download cover photo (graceful degradation if fails)
-    console.log("[process] Step 3: Downloading cover photo...");
-    let photo: Buffer | undefined;
-    const imageUrl = getPostImageUrl(post);
-    if (imageUrl) {
-      photo = await downloadImage(imageUrl);
-      if (photo) {
-        console.log(`[process] Downloaded photo: ${photo.length} bytes`);
+      // Step 3: Download cover image from og:image (graceful degradation if fails)
+      console.log("[process] Step 3: Extracting cover image...");
+      const ogImageUrl = extractOgImageUrl(html);
+      if (ogImageUrl) {
+        photo = await downloadImage(ogImageUrl);
+        if (photo) {
+          console.log(`[process] Downloaded OG image: ${photo.length} bytes`);
+        } else {
+          console.log(
+            "[process] OG image download failed, continuing without photo",
+          );
+        }
       } else {
-        console.log(
-          "[process] Photo download failed, continuing without photo",
-        );
+        console.log("[process] No og:image found, continuing without photo");
       }
-    } else {
-      console.log("[process] No image URL found in post");
     }
 
     // Step 4: Create recipe in AnyList
@@ -306,7 +355,7 @@ async function processRecipe(url: string): Promise<void> {
     const created = await createRecipe({
       recipe,
       sourceUrl: recipeSourceUrl,
-      sourceUsername: post.ownerUsername,
+      sourceUsername,
       credentials: anylistCredentials,
       photo,
     });

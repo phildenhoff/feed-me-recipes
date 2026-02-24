@@ -58,7 +58,8 @@ function isAuthError(error: unknown): boolean {
 export interface CreateRecipeParams {
   recipe: Recipe;
   sourceUrl: string;
-  sourceUsername: string;
+  /** Instagram username — omit for non-Instagram sources */
+  sourceUsername?: string;
   credentials: AnyListCredentials;
   /** Photo buffer to upload as recipe cover image (optional) */
   photo?: Buffer;
@@ -119,7 +120,9 @@ export async function createRecipe({
     servings: recipe.servings,
     prepTime: recipe.prepTime ?? 0, // Note: anylist-napi has a bug where these save as 0
     cookTime: recipe.cookTime ?? 0,
-    sourceName: `Instagram @${sourceUsername}`,
+    sourceName: sourceUsername
+      ? `Instagram @${sourceUsername}`
+      : new URL(sourceUrl).hostname,
     sourceUrl: sourceUrl,
     photoId,
   };
