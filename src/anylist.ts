@@ -1,11 +1,3 @@
-/**
- * AnyList integration layer.
- *
- * Responsible for one thing: given a parsed recipe and its source metadata,
- * create it in AnyList via anylist-napi. Has no knowledge of where the recipe
- * came from (Instagram, a recipe website, etc.) — that is the caller's concern.
- */
-
 import { AnyListClient } from '@anylist-napi/anylist-napi';
 import type { Recipe } from './parser.js';
 
@@ -21,10 +13,6 @@ export interface CreatedRecipe {
   name: string;
 }
 
-/**
- * Reset the client to force a fresh login on next API call.
- * Use this when authentication has expired.
- */
 function resetClient(): void {
   client = null;
 }
@@ -41,9 +29,6 @@ export async function ensureLoggedIn(
   console.log('[anylist] Login successful');
 }
 
-/**
- * Check if an error indicates an authentication failure.
- */
 function isAuthError(error: unknown): boolean {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
@@ -62,17 +47,15 @@ function isAuthError(error: unknown): boolean {
 export interface CreateRecipeParams {
   recipe: Recipe;
   sourceUrl: string;
-  /** Instagram username — omit for non-Instagram sources */
-  sourceUsername?: string;
+  sourceName: string;
   credentials: AnyListCredentials;
-  /** Photo buffer to upload as recipe cover image (optional) */
   photo?: Buffer;
 }
 
 export async function createRecipe({
   recipe,
   sourceUrl,
-  sourceUsername,
+  sourceName,
   credentials,
   photo,
 }: CreateRecipeParams): Promise<CreatedRecipe> {
@@ -84,7 +67,7 @@ export async function createRecipe({
 
   console.log(`[anylist] Creating recipe: ${recipe.name}`);
 
-  // Upload photo first if provided (non-fatal: recipe creation must succeed even if photo fails)
+  // Photo upload failure is non-fatal — the recipe must be saved regardless.
   let photoId: string | undefined;
   if (photo) {
     console.log(`[anylist] Uploading photo: ${photo.length} bytes`);
@@ -124,9 +107,7 @@ export async function createRecipe({
     servings: recipe.servings,
     prepTime: recipe.prepTime ?? 0, // Note: anylist-napi has a bug where these save as 0
     cookTime: recipe.cookTime ?? 0,
-    sourceName: sourceUsername
-      ? `Instagram @${sourceUsername}`
-      : new URL(sourceUrl).hostname,
+    sourceName,
     sourceUrl: sourceUrl,
     photoId,
   };
