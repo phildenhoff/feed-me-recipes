@@ -1,5 +1,9 @@
 /**
- * AnyList recipe creation via anylist-napi
+ * AnyList integration layer.
+ *
+ * Responsible for one thing: given a parsed recipe and its source metadata,
+ * create it in AnyList via anylist-napi. Has no knowledge of where the recipe
+ * came from (Instagram, a recipe website, etc.) — that is the caller's concern.
  */
 
 import { AnyListClient } from '@anylist-napi/anylist-napi';
