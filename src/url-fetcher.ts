@@ -64,10 +64,10 @@ export function extractJsonLd(html: string): Record<string, unknown> | null {
 }
 
 /**
- * Extracts the Open Graph image URL from raw HTML.
+ * Extracts the OpenGraph image URL from raw HTML.
  * Returns null if no og:image meta tag is found.
  */
-export function extractOgImageUrl(html: string): string | null {
+export function extractOpenGraphImageUrl(html: string): string | null {
   const match =
     /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i.exec(html) ??
     /<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i.exec(html);

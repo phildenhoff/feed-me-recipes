@@ -8,7 +8,7 @@ import {
   parseRecipeFromJsonLd,
   type Recipe,
 } from "./parser.js";
-import { fetchHtml, extractJsonLd, extractOgImageUrl } from "./url-fetcher.js";
+import { fetchHtml, extractJsonLd, extractOpenGraphImageUrl } from "./url-fetcher.js";
 import { createRecipe, type AnyListCredentials } from "./anylist.js";
 import { notifySuccess, notifyError, notifyNotRecipe } from "./notify.js";
 import Database from "better-sqlite3";
@@ -333,20 +333,20 @@ async function processRecipe(url: string): Promise<void> {
       recipe = result.recipe;
       console.log(`[process] Parsed recipe: "${recipe.name}"`);
 
-      // Step 3: Download cover image from og:image (graceful degradation if fails)
+      // Step 3: Download cover image from OpenGraph metadata (graceful degradation if fails)
       console.log("[process] Step 3: Extracting cover image...");
-      const ogImageUrl = extractOgImageUrl(html);
-      if (ogImageUrl) {
-        photo = await downloadImage(ogImageUrl);
+      const openGraphImageUrl = extractOpenGraphImageUrl(html);
+      if (openGraphImageUrl) {
+        photo = await downloadImage(openGraphImageUrl);
         if (photo) {
-          console.log(`[process] Downloaded OG image: ${photo.length} bytes`);
+          console.log(`[process] Downloaded OpenGraph image: ${photo.length} bytes`);
         } else {
           console.log(
-            "[process] OG image download failed, continuing without photo",
+            "[process] OpenGraph image download failed, continuing without photo",
           );
         }
       } else {
-        console.log("[process] No og:image found, continuing without photo");
+        console.log("[process] No OpenGraph image found, continuing without photo");
       }
     }
 
