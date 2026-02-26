@@ -74,6 +74,11 @@ export async function extractRecipeFromInstagram(
     // Caption-only parsing is the fallback because Haiku will hallucinate
     // quantities from vague captions — "season to taste" becomes "1 tsp salt"
     // with no detectable signal that the value was invented.
+    //
+    // `linkedUrl` is logically redundant here (jsonLd can only be non-null if
+    // linkedUrl was truthy), but the explicit check narrows the TypeScript type
+    // from `string | null` to `string` for the sourceUrl assignment below.
+    console.log(`[extractor] Using JSON-LD from ${linkedUrl} merged with caption`);
     const result = await deps.parseRecipeFromJsonLdAndCaption(jsonLd, post.caption);
     if (!result.is_recipe) return { ok: false, reason: result.reason };
     recipe = result.recipe;
@@ -95,7 +100,7 @@ export async function extractRecipeFromInstagram(
     value: {
       recipe,
       sourceUrl,
-      sourceName: post.ownerFullName || post.ownerUsername,
+      sourceName: `Instagram @${post.ownerUsername}`,
       photo,
     },
   };
