@@ -15,7 +15,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- pnpm ----
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pin pnpm 9: Node 20 runtime + lockfile v9; pnpm >=10 dropped Node 20 builtin
+# transport (ERR_UNKNOWN_BUILTIN_MODULE under corepack).
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # ---- Force native addons to use prebuilt binaries only ----
 # These env vars are respected by napi-rs / node-gyp ecosystems
