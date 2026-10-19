@@ -7,7 +7,14 @@ import {
   parseRecipeFromJsonLdAndCaption,
   parseRecipeFromJsonLd,
 } from "./parser.js";
-import { fetchHtml, extractJsonLd, extractOpenGraphImageUrl } from "./url-fetcher.js";
+import {
+  fetchHtmlDirect,
+  fetchHtmlViaReaderProxy,
+  makeHtmlFetcher,
+  extractJsonLd,
+  extractOpenGraphImageUrl,
+} from "./url-fetcher.js";
+import { isFacebookUrl, extractFacebookPost } from "./facebook.js";
 import { createRecipe, type AnyListCredentials } from "./anylist.js";
 import { notifySuccess, notifyError, notifyNotRecipe } from "./notify.js";
 import { makeExtractor } from "./recipe-extractor.js";
@@ -24,6 +31,8 @@ const ANYLIST_PASSWORD = process.env.ANYLIST_PASSWORD;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const SQLITE_DB_PATH = process.env.SQLITE_DB_PATH;
+// Optional: Jina Reader API key for the bot-blocked-site fallback (higher rate limits)
+const JINA_API_KEY = process.env.JINA_API_KEY;
 
 const requiredEnvVars = {
   API_TOKEN,
@@ -87,6 +96,11 @@ const anylistCredentials: AnyListCredentials = {
   password: ANYLIST_PASSWORD!,
 };
 
+const fetchHtml = makeHtmlFetcher({
+  direct: fetchHtmlDirect,
+  readerProxy: (u) => fetchHtmlViaReaderProxy(u, { apiKey: JINA_API_KEY }),
+});
+
 const extractor = makeExtractor({
   fetchInstagramPost: (u) => fetchInstagramPost(u, APIFY_TOKEN!),
   getPostImageUrl,
@@ -94,6 +108,8 @@ const extractor = makeExtractor({
   fetchHtml,
   extractJsonLd,
   extractOpenGraphImageUrl,
+  isFacebookUrl,
+  extractFacebookPost,
   parseRecipeFromCaption: (caption) => parseRecipe(caption, ANTHROPIC_API_KEY!),
   parseRecipeFromJsonLd: (jsonLd) => parseRecipeFromJsonLd(jsonLd, ANTHROPIC_API_KEY!),
   parseRecipeFromJsonLdAndCaption: (jsonLd, caption) =>

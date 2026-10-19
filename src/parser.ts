@@ -1,6 +1,6 @@
 /**
  * Claude Haiku recipe parsing
- * Extracts structured recipe data from Instagram captions
+ * Extracts structured recipe data from social media captions and Schema.org JSON-LD
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -39,7 +39,7 @@ export type Ingredient = z.infer<typeof IngredientSchema>;
 export type Recipe = z.infer<typeof RecipeSchema>;
 export type ParseResult = z.infer<typeof ParseResultSchema>;
 
-const CAPTION_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given an Instagram post caption, extract the recipe into structured data.
+const CAPTION_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given a social media post caption (Instagram, Facebook, or similar), extract the recipe into structured data.
 
 If the caption does not contain a recipe (no ingredients or no instructions), set is_recipe to false and provide a reason.
 
@@ -53,14 +53,14 @@ If it contains a recipe, set is_recipe to true and populate the recipe fields. R
 
 const JSONLD_WITH_CAPTION_SYSTEM_PROMPT = `You are a recipe extraction assistant. You are given two sources:
 1. Schema.org Recipe JSON-LD (structured data from the recipe's website) — treat this as authoritative for measurements, steps, and timings.
-2. An Instagram caption from the recipe creator — use this for personal notes, tips, variations, and any context not captured in the structured data.
+2. A social media post caption from the recipe creator — use this for personal notes, tips, variations, and any context not captured in the structured data.
 
 Merge both sources into the structured recipe output. Rules:
 - Use JSON-LD quantities and measurements verbatim — do NOT invent or adjust quantities
 - prepTime/cookTime in minutes (parse ISO 8601 durations, e.g. PT1H30M = 90)
 - recipeInstructions may be strings or HowToStep objects — extract the text
 - Separate ingredient quantities from names where possible
-- Capture creator tips, personal notes, or variations from the Instagram caption in the notes field
+- Capture creator tips, personal notes, or variations from the post caption in the notes field
 - Set confidence to 1.0 when JSON-LD is present
 - If the data cannot be mapped to a valid recipe, set is_recipe to false`;
 
@@ -88,7 +88,7 @@ export async function parseRecipe(
     messages: [
       {
         role: "user",
-        content: `Extract the recipe from this Instagram caption:\n\n${caption}`,
+        content: `Extract the recipe from this social media post caption:\n\n${caption}`,
       },
     ],
     output_config: { format: OUTPUT_FORMAT },
@@ -114,7 +114,7 @@ export async function parseRecipeFromJsonLdAndCaption(
   caption: string,
   anthropicApiKey: string,
 ): Promise<ParseResult> {
-  console.log("[parser] Parsing recipe from JSON-LD + Instagram caption");
+  console.log("[parser] Parsing recipe from JSON-LD + post caption");
 
   const client = new Anthropic({ apiKey: anthropicApiKey });
 
@@ -125,7 +125,7 @@ export async function parseRecipeFromJsonLdAndCaption(
     messages: [
       {
         role: "user",
-        content: `JSON-LD structured data:\n\n${JSON.stringify(jsonLd, null, 2)}\n\n---\n\nInstagram caption:\n\n${caption}`,
+        content: `JSON-LD structured data:\n\n${JSON.stringify(jsonLd, null, 2)}\n\n---\n\nPost caption:\n\n${caption}`,
       },
     ],
     output_config: { format: OUTPUT_FORMAT },

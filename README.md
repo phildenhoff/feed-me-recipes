@@ -1,6 +1,6 @@
 # Feed Me Recipes
 
-Create Anylist recipes from Instagram recipe posts.
+Create AnyList recipes from Instagram posts, Facebook posts, and recipe websites.
 
 ## How It Works
 
@@ -33,7 +33,10 @@ cp .env.example .env
 # Run locally
 pnpm dev
 
-# Test
+# Test (unit)
+pnpm test
+
+# Try it
 curl -X POST http://localhost:3000/ingest \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -86,7 +89,10 @@ HTTP/1.1 200 OK
 | `ANYLIST_PASSWORD` | AnyList account password |
 | `ANTHROPIC_API_KEY` | Claude API key for recipe parsing |
 | `NTFY_TOPIC` | ntfy.sh topic for notifications |
+| `SQLITE_DB_PATH` | Path to the SQLite database tracking import attempts |
+| `JINA_API_KEY` | Optional. Jina Reader key for the bot-blocked-site fallback (higher rate limits) |
 | `PORT` | Server port (default: 3000) |
+| `ADMIN_PORT` | Tailscale-only admin UI port (default: 3001) |
 
 ### Apify Token Permissions
 
@@ -101,11 +107,14 @@ No dataset permissions required (uses sync API).
 
 ```
 ├── src/
-│   ├── index.ts      # Express server + routes
-│   ├── apify.ts      # Instagram fetching (Apify sync API)
-│   ├── parser.ts     # Claude Haiku recipe parsing
-│   ├── anylist.ts    # AnyList recipe creation
-│   └── notify.ts     # ntfy.sh notifications
+│   ├── index.ts             # Express server + routes + admin retry UI
+│   ├── recipe-extractor.ts  # Picks a source strategy (Instagram / Facebook / URL)
+│   ├── apify.ts             # Instagram fetching (Apify sync API)
+│   ├── facebook.ts          # Facebook post caption extraction (OpenGraph tags)
+│   ├── url-fetcher.ts       # HTML fetching with bot-block fallback, JSON-LD extraction
+│   ├── parser.ts            # Claude Haiku recipe parsing
+│   ├── anylist.ts           # AnyList recipe creation
+│   └── notify.ts            # ntfy.sh notifications
 ├── scripts/
 │   └── postinstall.js  # Patches anylist-napi ESM bug
 ├── Dockerfile
@@ -135,9 +144,31 @@ Expose the service securely without opening ports:
 2. Add public hostname pointing to `http://localhost:3000`
 3. Optionally configure Zero Trust access policies (or rely on bearer token auth)
 
+## Supported Sources
+
+| URL | How it is read |
+|-----|----------------|
+| `instagram.com/...` | Post fetched via Apify. If the caption links to a recipe site, that site's JSON-LD is merged with the caption. |
+| `facebook.com/share/...`, `fb.watch/...` | Logged-out post page fetched directly; the full caption comes from the `og:title` tag (`og:description` is truncated). Same caption/JSON-LD merge as Instagram. |
+| Any other URL | Page fetched directly and its Schema.org Recipe JSON-LD parsed. |
+
+### Bot protection
+
+Pages are requested with an honest `FeedMeRecipes/1.0` User-Agent. Do not
+"fix" a 403 by spoofing a browser User-Agent: Cloudflare and Facebook flag a
+Chrome User-Agent arriving without Chrome's TLS fingerprint and client-hint
+headers, and reject it. The honest User-Agent is what gets through.
+
+If a site still answers 401/403/406/429/503, the fetch is retried through the
+[Jina Reader](https://r.jina.ai) proxy, which renders the page in a real
+browser. That clears PerimeterX (thekitchn.com) and lighter Cloudflare rules.
+Sites behind a full Cloudflare managed challenge (for example jenniabs.com)
+fail both tiers; the error notification then says the site blocks automated
+requests so you know to share the recipe text another way.
+
 ## Recipe Parsing
 
-Claude Haiku extracts structured recipe data from Instagram captions:
+Claude Haiku extracts structured recipe data from post captions and JSON-LD:
 
 ```json
 {
